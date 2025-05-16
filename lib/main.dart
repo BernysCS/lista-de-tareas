@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 void main() {
-  runApp(const MiApp());
+  runApp(MiApp());
 }
 
 // Modelo de tarea
@@ -14,17 +14,13 @@ class Tarea {
   Tarea({required this.titulo, this.completada = false});
 
   // Convertir a JSON para guardar
-  Map<String, dynamic> aJson() => {
-        'titulo': titulo,
-        'completada': completada,
-      };
+  Map<String, dynamic> aJson() {
+    return {'titulo': titulo, 'completada': completada};
+  }
 
   // Crear tarea desde JSON
   factory Tarea.desdeJson(Map<String, dynamic> json) {
-    return Tarea(
-      titulo: json['titulo'],
-      completada: json['completada'],
-    );
+    return Tarea(titulo: json['titulo'], completada: json['completada']);
   }
 }
 
@@ -33,9 +29,7 @@ class MiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: PaginaTareas(),
-    );
+    return MaterialApp(home: PaginaTareas());
   }
 }
 
@@ -43,7 +37,9 @@ class PaginaTareas extends StatefulWidget {
   const PaginaTareas({super.key});
 
   @override
-  State<PaginaTareas> createState() => _PaginaTareasEstado();
+  State<PaginaTareas> createState() {
+    return _PaginaTareasEstado();
+  }
 }
 
 class _PaginaTareasEstado extends State<PaginaTareas> {
@@ -59,24 +55,39 @@ class _PaginaTareasEstado extends State<PaginaTareas> {
   void cargarTareas() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? datos = prefs.getString('tareas');
+
     if (datos != null) {
       List lista = jsonDecode(datos);
+      List<Tarea> tareasCargadas = [];
+
+      for (int i = 0; i < lista.length; i++) {
+        tareasCargadas.add(Tarea.desdeJson(lista[i]));
+      }
+
       setState(() {
-        listaTareas = lista.map((e) => Tarea.desdeJson(e)).toList();
+        listaTareas = tareasCargadas;
       });
     }
   }
 
   void guardarTareas() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    List datos = listaTareas.map((e) => e.aJson()).toList();
-    prefs.setString('tareas', jsonEncode(datos));
+    List<Map<String, dynamic>> datos = [];
+
+    for (int i = 0; i < listaTareas.length; i++) {
+      datos.add(listaTareas[i].aJson());
+    }
+
+    String jsonTareas = jsonEncode(datos);
+    prefs.setString('tareas', jsonTareas);
   }
 
   void agregarTarea() {
-    if (controladorTexto.text.isNotEmpty) {
+    String texto = controladorTexto.text;
+
+    if (texto.isNotEmpty) {
       setState(() {
-        listaTareas.add(Tarea(titulo: controladorTexto.text));
+        listaTareas.add(Tarea(titulo: texto));
         controladorTexto.clear();
         guardarTareas();
       });
@@ -85,7 +96,8 @@ class _PaginaTareasEstado extends State<PaginaTareas> {
 
   void marcarTarea(int indice) {
     setState(() {
-      listaTareas[indice].completada = !listaTareas[indice].completada;
+      bool estadoActual = listaTareas[indice].completada;
+      listaTareas[indice].completada = !estadoActual;
       guardarTareas();
     });
   }
@@ -100,48 +112,53 @@ class _PaginaTareasEstado extends State<PaginaTareas> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis Tareas')),
+      appBar: AppBar(title: Text('Mis Tareas')),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: controladorTexto,
-                    decoration: const InputDecoration(
-                        hintText: 'Escribe una nueva tarea'),
+                    decoration: InputDecoration(
+                      hintText: 'Escribe una nueva tarea',
+                    ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: agregarTarea,
-                ),
+                IconButton(icon: Icon(Icons.add), onPressed: agregarTarea),
               ],
             ),
           ),
           Expanded(
             child: ListView.builder(
               itemCount: listaTareas.length,
-              itemBuilder: (context, indice) => ListTile(
-                leading: Checkbox(
-                  value: listaTareas[indice].completada,
-                  onChanged: (valor) => marcarTarea(indice),
-                ),
-                title: Text(
-                  listaTareas[indice].titulo,
-                  style: TextStyle(
-                    decoration: listaTareas[indice].completada
-                        ? TextDecoration.lineThrough
-                        : TextDecoration.none,
+              itemBuilder: (context, indice) {
+                return ListTile(
+                  leading: Checkbox(
+                    value: listaTareas[indice].completada,
+                    onChanged: (valor) {
+                      marcarTarea(indice);
+                    },
                   ),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => eliminarTarea(indice),
-                ),
-              ),
+                  title: Text(
+                    listaTareas[indice].titulo,
+                    style: TextStyle(
+                      decoration:
+                          listaTareas[indice].completada
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                    ),
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete),
+                    onPressed: () {
+                      eliminarTarea(indice);
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],
